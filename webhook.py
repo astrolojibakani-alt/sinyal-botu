@@ -61,7 +61,8 @@ def telegram(mesaj: str):
 # ═══════════════════════════════════════════════════════════
 #  ⚡ THUNDERBOX
 #  Format: THUNDERBOX|TIP|SEMBOL|DILIM|CLOSE|UST|ALT|ORTA[|SKOR]
-#  TIP: OMEGA | CROSS | VT_BULL | VT_BEAR | BZ_BULL | BZ_BEAR
+#  TIP: OMEGA | CROSS | VT_BULL | VT_BEAR |
+#       BZ_BULL | BZ_BEAR | BZ_ENTRY | BZ_CLOSE_ABOVE | BZ_CLOSE_BELOW
 # ═══════════════════════════════════════════════════════════
 def isle_thunderbox(p):
     if len(p) < 8: return
@@ -71,12 +72,17 @@ def isle_thunderbox(p):
     genislik = bant_genislik(ust, alt)
 
     TIPLER = {
-        "OMEGA":   ("Ω  OMEGA kutusu aktif oldu",   "Omega"),
-        "CROSS":   ("⊗  CROSS kutusu aktif oldu",   "Cross"),
-        "VT_BULL": ("📦 Voltran kutusu — Boğa",      "Voltran"),
-        "VT_BEAR": ("📦 Voltran kutusu — Ayı",       "Voltran"),
-        "BZ_BULL": ("⚡ BreakZone — Boğa kırılımı",  "BreakZone"),
-        "BZ_BEAR": ("⚡ BreakZone — Ayı kırılımı",   "BreakZone"),
+        "OMEGA":             ("Ω  OMEGA kutusu aktif oldu",                        "Omega"),
+        "CROSS":             ("⊗  CROSS kutusu aktif oldu",                        "Cross"),
+        "VT_BULL":           ("📦 Voltran kutusu — Boğa",                           "Voltran"),
+        "VT_BEAR":           ("📦 Voltran kutusu — Ayı",                            "Voltran"),
+        "VT_BULL_STRONG":    ("💚 GÜÇLÜ Voltran — Boğa  (%80+)",                   "Voltran GÜÇLÜ"),
+        "VT_BEAR_STRONG":    ("❤️ GÜÇLÜ Voltran — Ayı  (%80+)",                    "Voltran GÜÇLÜ"),
+        "BZ_BULL":           ("⚡ Yıldırım — Boğa seviyesi oluştu",                "Yıldırım"),
+        "BZ_BEAR":           ("⚡ Yıldırım — Ayı seviyesi oluştu",                 "Yıldırım"),
+        "BZ_ENTRY":          ("🎯 Yıldırım bölgesine GİRİLDİ",                     "Yıldırım"),
+        "BZ_CLOSE_ABOVE":    ("🟢 Mum yıldırım kutusunun ÜSTÜNDE kapandı — Boğa onayı",  "Yıldırım"),
+        "BZ_CLOSE_BELOW":    ("🔴 Mum yıldırım kutusunun ALTINDA kapandı — Ayı kırılımı", "Yıldırım"),
     }
     sinyal_adi, alt_tip = TIPLER.get(tip, (tip, tip))
 
