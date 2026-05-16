@@ -1,10 +1,11 @@
 # ═══════════════════════════════════════════════════════════
-#  Sinyal Botu v2 — 3 Ayrı Kanal Kimliği, Tek Grup
+#  Sinyal Botu v3 — 5 Kanal
 #  ⚡ ThunderBox  |  📊 ZAZ-JV  |  🧠 ZoneIQ
+#  🎯 TargetTrend Pro  |  📐 EMABOX
 # ═══════════════════════════════════════════════════════════
 
 from flask import Flask, request
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import requests, os, logging
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(message)s")
@@ -12,6 +13,9 @@ app = Flask(__name__)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 CHAT_ID   = os.environ.get("CHAT_ID",   "")
+
+# ── Türkiye saati (UTC+3) — sunucu konumundan bağımsız ────
+TZ_TR = timezone(timedelta(hours=3))
 
 SEMBOLLER = {
     "XAUUSD":"Altın","XAGUSD":"Gümüş","BTCUSDT":"Bitcoin",
@@ -25,9 +29,10 @@ DILIMLER = {
     "D":"Günlük","1D":"Günlük","W":"Haftalık","M":"Aylık",
 }
 
-def sad(s): return SEMBOLLER.get(s, s)
-def dad(d): return DILIMLER.get(d, d + " dk")
-def saat(): return datetime.now().strftime("%H:%M")
+def sad(s):  return SEMBOLLER.get(s, s)
+def dad(d):  return DILIMLER.get(d, d + " dk")
+def saat():  return datetime.now(TZ_TR).strftime("%H:%M")  # BUG #4 DÜZELTİLDİ
+
 def fmt(x):
     try:
         x = float(x)
@@ -43,11 +48,15 @@ def telegram(mesaj: str):
     if not BOT_TOKEN or not CHAT_ID:
         logging.warning("BOT_TOKEN veya CHAT_ID eksik!")
         return
-    resp = requests.post(
-        f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-        json={"chat_id": CHAT_ID, "text": mesaj, "parse_mode": "HTML"}
-    )
-    logging.info(f"Telegram {'OK' if resp.status_code==200 else 'HATA'} → {mesaj[:50]}…")
+    try:                                                      # BUG #5 DÜZELTİLDİ
+        resp = requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            json={"chat_id": CHAT_ID, "text": mesaj, "parse_mode": "HTML"},
+            timeout=10
+        )
+        logging.info(f"Telegram {'OK' if resp.status_code==200 else 'HATA'} → {mesaj[:50]}…")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Telegram bağlantı hatası: {e}")
 
 # ═══════════════════════════════════════════════════════════
 #  ⚡ THUNDERBOX
@@ -110,16 +119,16 @@ def isle_zazjv(p):
     c2x_txt = "✅ 2X Onay" if conf2x=="1" else "⏳ Tek sinyal"
 
     MTF = {
-        "MTF_G_GREEN":  ("Günlük yeşile döndü + H+A Yeşil", "+7.4% ort  ·  %67 yukarı  [Tier-1]"),
-        "MTF_H_GREEN":  ("Haftalık yeşile döndü + A Yeşil",  "+5.1% ort  ·  %78 yukarı  [Tier-1]"),
-        "MTF_G_RED":    ("Günlük kırmızıya döndü + H+A Kırmızı", "-2.0% ort  ·  %84 aşağı  [Güçlü]"),
-        "MTF_4S_GREEN": ("4 Saatlik yeşile döndü + H+A Yeşil",   "+4.8% ort  ·  %62 yukarı  [Tier-2]"),
-        "MTF_4S_RED":   ("4 Saatlik kırmızıya döndü + H+A Kırmızı", "-0.5% ort  ·  %55 aşağı"),
-        "MTF_4S_DIP":   ("4S kırmızı — Dip fırsatı (H+A Yeşil)",   "+4.2% ort  ·  %59 yukarı"),
-        "DEMA_GREEN":   ("DEMA yeşile geçti — Boğa kutusu açıldı", "Rejim onaylı giriş"),
-        "DEMA_RED":     ("DEMA kırmızıya geçti — Ayı kutusu açıldı", "Rejim onaylı çıkış"),
-        "CONF2X_BULL":  ("2X Boğa Konfirmasyonu", "DEMA + STD aynı yönde yeşil"),
-        "CONF2X_BEAR":  ("2X Ayı Konfirmasyonu",  "DEMA + STD aynı yönde kırmızı"),
+        "MTF_G_GREEN":  ("Günlük yeşile döndü + H+A Yeşil",            "+7.4% ort  ·  %67 yukarı  [Tier-1]"),
+        "MTF_H_GREEN":  ("Haftalık yeşile döndü + A Yeşil",             "+5.1% ort  ·  %78 yukarı  [Tier-1]"),
+        "MTF_G_RED":    ("Günlük kırmızıya döndü + H+A Kırmızı",       "-2.0% ort  ·  %84 aşağı  [Güçlü]"),
+        "MTF_4S_GREEN": ("4 Saatlik yeşile döndü + H+A Yeşil",          "+4.8% ort  ·  %62 yukarı  [Tier-2]"),
+        "MTF_4S_RED":   ("4 Saatlik kırmızıya döndü + H+A Kırmızı",    "-0.5% ort  ·  %55 aşağı"),
+        "MTF_4S_DIP":   ("4S kırmızı — Dip fırsatı (H+A Yeşil)",       "+4.2% ort  ·  %59 yukarı"),
+        "DEMA_GREEN":   ("DEMA yeşile geçti — Boğa kutusu açıldı",     "Rejim onaylı giriş"),
+        "DEMA_RED":     ("DEMA kırmızıya geçti — Ayı kutusu açıldı",   "Rejim onaylı çıkış"),
+        "CONF2X_BULL":  ("2X Boğa Konfirmasyonu",                       "DEMA + STD aynı yönde yeşil"),
+        "CONF2X_BEAR":  ("2X Ayı Konfirmasyonu",                        "DEMA + STD aynı yönde kırmızı"),
     }
     sinyal_adi, beklenti = MTF.get(tip, (tip, ""))
     alt_tip = "MTF" if tip.startswith("MTF") else ("2X Onay" if "CONF2X" in tip else "DEMA")
@@ -161,36 +170,40 @@ def isle_zoneiq(p):
     cl    = p[4]
     st_u  = p[5]
     st_a  = p[6]
-    ql    = p[7]  if len(p) > 7  else "—"
-    skor  = p[8]  if len(p) > 8  else "—"
-    gap   = p[9]  if len(p) > 9  else "—"
+    ql       = p[7]  if len(p) > 7  else "—"
+    skor     = p[8]  if len(p) > 8  else "—"
+    gap      = p[9]  if len(p) > 9  else "—"
     strength = p[10] if len(p) > 10 else "—"
-    t1   = p[11] if len(p) > 11 else "0"
-    t2   = p[12] if len(p) > 12 else "0"
-    t3   = p[13] if len(p) > 13 else "0"
-    t4   = p[14] if len(p) > 14 else "0"
-    stars = p[15] if len(p) > 15 else ""
+    t1       = p[11] if len(p) > 11 else "0"
+    t2       = p[12] if len(p) > 12 else "0"
+    t3       = p[13] if len(p) > 13 else "0"
+    t4       = p[14] if len(p) > 14 else "0"
+    stars    = p[15] if len(p) > 15 else ""
     genislik = bant_genislik(st_u, st_a)
 
     TIPLER = {
-        "FLIP_UP":   ("🟢 Trend Dönüşü — Yukarı",    "SuperTrend yön değiştirdi"),
-        "FLIP_DOWN": ("🔴 Trend Dönüşü — Aşağı",     "SuperTrend yön değiştirdi"),
-        "PREMIUM":   ("⭐ Premium Sinyal",              "GÜÇLÜ + skor ≥ 12"),
-        "PB_LONG":   ("🔵 Pullback Long",              "Fiyat aktif desteğe döndü"),
-        "PB_SHORT":  ("🟠 Pullback Short",             "Fiyat aktif dirence döndü"),
-        "MAG_PB":    ("⚡ Manyetik Pullback",           "Trend dönüşünde ref alanı üstünde"),
-        "T1_HIT":    ("🎯 T1 Hedefine Ulaşıldı",      f"Sonraki hedef T2: {fmt(t2)}"),
-        "T2_HIT":    ("🎯 T2 Hedefine Ulaşıldı",      f"Sonraki hedef T3: {fmt(t3)}"),
-        "T3_HIT":    ("🎯 T3 Hedefine Ulaşıldı",      f"Sonraki hedef T4: {fmt(t4)}"),
+        "FLIP_UP":   ("🟢 Trend Dönüşü — Yukarı",  "SuperTrend yön değiştirdi"),
+        "FLIP_DOWN": ("🔴 Trend Dönüşü — Aşağı",   "SuperTrend yön değiştirdi"),
+        "PREMIUM":   ("⭐ Premium Sinyal",            "GÜÇLÜ + skor ≥ 12"),
+        "PB_LONG":   ("🔵 Pullback Long",            "Fiyat aktif desteğe döndü"),
+        "PB_SHORT":  ("🟠 Pullback Short",           "Fiyat aktif dirence döndü"),
+        "MAG_PB":    ("⚡ Manyetik Pullback",         "Trend dönüşünde ref alanı üstünde"),
+        "T1_HIT":    ("🎯 T1 Hedefine Ulaşıldı",    f"Sonraki hedef T2: {fmt(t2)}"),
+        "T2_HIT":    ("🎯 T2 Hedefine Ulaşıldı",    f"Sonraki hedef T3: {fmt(t3)}"),
+        "T3_HIT":    ("🎯 T3 Hedefine Ulaşıldı",    f"Sonraki hedef T4: {fmt(t4)}"),
     }
     sinyal_adi, aciklama = TIPLER.get(tip, (tip, ""))
     alt_tip = "Hedef" if "HIT" in tip else ("Pullback" if "PB" in tip else "Trend")
 
     kalite = {"GÜÇLÜ":"🟢 GÜÇLÜ","İYİ":"🟡 İYİ","DİKKAT":"🟠 DİKKAT","TEHLİKE":"🔴 TEHLİKE"}.get(ql, ql)
 
-    # Hedef satırları — sadece T_ HIT değilse göster
+    # BUG #6 DÜZELTİLDİ — güvenli float dönüşüm
+    def safe_positive(val):
+        try: return float(val) > 0
+        except: return False
+
     hedef_blok = ""
-    if "HIT" not in tip and any(float(x) > 0 for x in [t1,t2,t3,t4] if x not in ("0","—")):
+    if "HIT" not in tip and any(safe_positive(x) for x in [t1, t2, t3, t4]):
         hedef_blok = (
             f"\n"
             f"🎯 <b>Hedefler</b>\n"
@@ -225,6 +238,113 @@ def isle_zoneiq(p):
     telegram(mesaj)
 
 # ═══════════════════════════════════════════════════════════
+#  🎯 TARGET TREND PRO
+#  Format: TARGETTREND|TIP|SEMBOL|DILIM|CLOSE|ENTRY|T1A|T1B|T2|T3|YON
+#  TIP: SIG_UP | SIG_DOWN | T1A_HIT | T1B_HIT | T2_HIT | T3_HIT
+# ═══════════════════════════════════════════════════════════
+def isle_targettrend(p):
+    if len(p) < 9: return
+    tip, sem, dil = p[1], p[2], p[3]
+    cl    = p[4]
+    entry = p[5]
+    t1a   = p[6]
+    t1b   = p[7]
+    t2    = p[8]
+    t3    = p[9]  if len(p) > 9  else "—"
+    yon   = p[10] if len(p) > 10 else "—"
+
+    TIPLER = {
+        "SIG_UP":   ("🟢 Yeni UP Sinyali",       "Trend yukarı döndü"),
+        "SIG_DOWN": ("🔴 Yeni DOWN Sinyali",      "Trend aşağı döndü"),
+        "T1A_HIT":  ("🎯 T1a Hedefine Ulaşıldı", "Sonraki hedef T1b"),
+        "T1B_HIT":  ("🎯 T1b Hedefine Ulaşıldı", "Sonraki hedef T2"),
+        "T2_HIT":   ("🎯 T2 Hedefine Ulaşıldı",  "Sonraki hedef T3"),
+        "T3_HIT":   ("🎯 T3 Hedefine Ulaşıldı",  "Döngü tamamlandı"),
+    }
+    sinyal_adi, aciklama = TIPLER.get(tip, (tip, ""))
+    alt_tip = "Hedef" if "HIT" in tip else "Sinyal"
+    yon_txt = "▲ UP" if yon == "1" else "▼ DOWN"
+
+    hedef_blok = ""
+    if "HIT" not in tip:
+        hedef_blok = (
+            f"\n"
+            f"🎯 <b>Hedefler</b>\n"
+            f"   T1a  :  <code>{fmt(t1a)}</code>\n"
+            f"   T1b  :  <code>{fmt(t1b)}</code>\n"
+            f"   T2   :  <code>{fmt(t2)}</code>\n"
+            f"   T3   :  <code>{fmt(t3)}</code>"
+        )
+
+    mesaj = (
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🎯 <b>Target Trend Pro</b>  ·  {alt_tip}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"<b>{sinyal_adi}</b>\n"
+        f"<i>{aciklama}</i>\n"
+        f"<i>{sad(sem)}  ·  {dad(dil)}  ·  {saat()}</i>\n"
+        f"\n"
+        f"📍 Mevcut fiyat  :  <b>{fmt(cl)}</b>\n"
+        f"🔖 Giriş seviyesi :  <code>{fmt(entry)}</code>\n"
+        f"↕️ Yön           :  <b>{yon_txt}</b>"
+        f"{hedef_blok}"
+    )
+    telegram(mesaj)
+
+# ═══════════════════════════════════════════════════════════
+#  📐 EMABOX
+#  Format: EMABOX|CİFT|SEMBOL|DILIM|CLOSE|UST|ALT|SKOR|KATEGORİ
+#  ÇİFT: 111x200 | 111x786 | 111x1618 | 200x786 | 200x1618 |
+#        786x1618 | 111x4236 | 200x4236 | 786x4236 | 1618x4236
+#  KATEGORİ: Tetikleyici | Trend | Mega | Ultra-Mega
+# ═══════════════════════════════════════════════════════════
+def isle_emabox(p):
+    if len(p) < 7: return
+    cift, sem, dil = p[1], p[2], p[3]
+    cl, ust, alt   = p[4], p[5], p[6]
+    skor     = p[7] if len(p) > 7 else "—"
+    kategori = p[8] if len(p) > 8 else "—"
+    genislik = bant_genislik(ust, alt)
+
+    # Yıldız hesapla
+    try:
+        s = float(skor)
+        if   s >= 58: yildiz = "★★★★★"
+        elif s >= 52: yildiz = "★★★★"
+        elif s >= 45: yildiz = "★★★"
+        elif s >= 38: yildiz = "★★"
+        else:         yildiz = "★"
+    except:
+        yildiz = "★"
+
+    KAT = {
+        "Tetikleyici": ("●", "Tetikleyici", "🔵"),
+        "Trend":       ("●", "Trend",       "🟠"),
+        "Mega":        ("⬤", "Mega",        "🔴"),
+        "Ultra-Mega":  ("◉", "Ultra-Mega",  "🟣"),
+    }
+    dot, kat_adi, kat_emoji = KAT.get(kategori, ("●", kategori, "⚪"))
+
+    mesaj = (
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📐 <b>EMABOX</b>  ·  {kat_emoji} {kat_adi}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"<b>{dot} EMA {cift.replace('x','×')} — Kesişim</b>\n"
+        f"<i>{sad(sem)}  ·  {dad(dil)}  ·  {saat()}</i>\n"
+        f"\n"
+        f"📍 Mevcut fiyat  :  <b>{fmt(cl)}</b>\n"
+        f"🔼 Kutu üstü     :  <code>{fmt(ust)}</code>\n"
+        f"🔽 Kutu altı      :  <code>{fmt(alt)}</code>\n"
+        f"\n"
+        f"📦 <b>Kutu aralığı</b>\n"
+        f"   <code>{fmt(alt)}  —  {fmt(ust)}</code>\n"
+        f"   ↕ Genişlik: <b>{genislik}</b>\n"
+        f"\n"
+        f"🏆 Skor  :  <b>{skor} puan</b>  {yildiz}"
+    )
+    telegram(mesaj)
+
+# ═══════════════════════════════════════════════════════════
 #  WEBHOOK ENDPOINT
 # ═══════════════════════════════════════════════════════════
 @app.route("/webhook", methods=["POST"])
@@ -234,9 +354,11 @@ def webhook():
     p = veri.split("|")
     if len(p) < 2: return "invalid", 400
     kaynak = p[0].upper()
-    if   kaynak == "THUNDERBOX": isle_thunderbox(p)
-    elif kaynak == "ZAZJV":      isle_zazjv(p)
-    elif kaynak == "ZONEIQ":     isle_zoneiq(p)
+    if   kaynak == "THUNDERBOX":  isle_thunderbox(p)
+    elif kaynak == "ZAZJV":       isle_zazjv(p)
+    elif kaynak == "ZONEIQ":      isle_zoneiq(p)
+    elif kaynak == "TARGETTREND": isle_targettrend(p)   # BUG #1 + #2 DÜZELTİLDİ
+    elif kaynak == "EMABOX":      isle_emabox(p)         # YENİ KANAL
     else: logging.warning(f"Bilinmeyen kaynak: {kaynak}")
     return "ok", 200
 
