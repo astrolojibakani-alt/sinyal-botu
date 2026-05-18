@@ -351,6 +351,32 @@ def isle_emabox(p):
     telegram(mesaj)
 
 # ═══════════════════════════════════════════════════════════
+#  〰️ ELLIOTT WAVE
+#  Format: ELLIOTT|TIP|SEMBOL|DILIM|CLOSE
+#  TIP: YENI_DESEN
+# ═══════════════════════════════════════════════════════════
+def isle_elliott(p):
+    if len(p) < 5: return
+    tip = p[1]
+    sem = p[2]
+    dil = p[3]
+    cl  = p[4]
+
+    mesaj = (
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"〰️ <b>Elliott Wave</b>  ·  Yeni Desen\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"<b>🔄 Dalga sayımı değişti</b>\n"
+        f"<i>Yeni bir Elliott Wave deseni oluştu</i>\n"
+        f"<i>{sad(sem)}  ·  {dad(dil)}  ·  {saat()}</i>\n"
+        f"\n"
+        f"📍 Mevcut fiyat  :  <b>{fmt(cl)}</b>\n"
+        f"\n"
+        f"📊 Grafiği kontrol et, dalga yapısı güncellendi."
+    )
+    telegram(mesaj)
+
+# ═══════════════════════════════════════════════════════════
 #  WEBHOOK ENDPOINT
 # ═══════════════════════════════════════════════════════════
 @app.route("/webhook", methods=["POST"])
@@ -363,8 +389,9 @@ def webhook():
     if   kaynak == "THUNDERBOX":  isle_thunderbox(p)
     elif kaynak == "ZAZJV":       isle_zazjv(p)
     elif kaynak == "ZONEIQ":      isle_zoneiq(p)
-    elif kaynak == "TARGETTREND": isle_targettrend(p)   # BUG #1 + #2 DÜZELTİLDİ
-    elif kaynak == "EMABOX":      isle_emabox(p)         # YENİ KANAL
+    elif kaynak == "TARGETTREND": isle_targettrend(p)
+    elif kaynak == "EMABOX":      isle_emabox(p)
+    elif kaynak == "ELLIOTT":     isle_elliott(p)
     else: logging.warning(f"Bilinmeyen kaynak: {kaynak}")
     return "ok", 200
 
